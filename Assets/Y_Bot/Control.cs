@@ -9,15 +9,19 @@ public class Control : MonoBehaviour
     [SerializeField] float speed = 10f;
     [SerializeField] float sneakMultiplier = 0.5f;
     [SerializeField] float rotationSpeed = 100f;
+    [SerializeField] float jumpForce = 5f;
+    [SerializeField] Vector3 lerpOffset = Vector3.zero;
     Animator animator;
     bool sneakMode = false;
     bool isSitting = false;
     bool blockControl = false;
     private bool canSit;
+    bool isJumping = false;
+    bool isHanging=false;
     Chair chair = null;
     CapsuleCollider colider;
     Rigidbody body;
-    float count = 0.1f;
+    float count = 0.05f;
 
     void Start()
     {
@@ -55,11 +59,17 @@ public class Control : MonoBehaviour
         CinemachineVirtualCamera cameraToSit = chair.GetCamera();
         cameraToSit.Priority = 1;
         animator.SetBool("isSitting", false);
+        count = 0.05f;
         StartCoroutine(WaitForStand());
     }
 
     IEnumerator WaitForStand(){
-        yield return new WaitUntil(()=>animator.GetCurrentAnimatorStateInfo(0).IsName("neutral_idle"));
+        yield return new WaitUntil(()=>
+        {
+            transform.position = Vector3.Lerp(transform.position,chair.PlaceToStandUP(),count*Time.deltaTime);
+            count+=0.01f;
+            return animator.GetCurrentAnimatorStateInfo(0).IsName("neutral_idle");
+        });
         colider.enabled = true;
         blockControl = false;
         body.useGravity = true;
@@ -72,17 +82,20 @@ public class Control : MonoBehaviour
         CinemachineVirtualCamera cameraToSit = chair.GetCamera();
         Transform placeToStand = chair.GetPosition();
         cameraToSit.Priority = 3;
+        count = 0.05f;
         StartCoroutine(GoToPlace(placeToStand));
-
     }
 
     IEnumerator GoToPlace(Transform place)
     {
+        animator.SetBool("isWalking", true);
+        animator.SetFloat("direction",0.5f);
         Debug.Log("In");
         colider.enabled = false;
         body.useGravity = false;
         yield return new WaitUntil(() => Check(place));
         Debug.Log("Out");
+        animator.SetBool("isWalking", false);
         animator.SetBool("isSitting", true);
         yield break;
     }
@@ -131,13 +144,36 @@ public class Control : MonoBehaviour
 
     private void Jumping()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Space) && !isJumping)
         {
+            //body.AddForce(Vector3.up*jumpForce,ForceMode.Impulse);
+            isJumping = true;
             animator.SetTrigger("isJumping");
         }
         if (Input.GetKeyUp(KeyCode.Space))
         {
             animator.ResetTrigger("isJumping");
+            isJumping = false;
+        }
+    }
+
+    public void setHanging(bool state, Transform target){
+        isHanging = state;
+        body.isKinematic = isHanging;
+        count = 0.05f;
+        StartCoroutine(LerpTo(target));
+        animator.SetBool("isHanging",isHanging);
+    }
+
+    IEnumerator LerpTo(Transform target){
+        transform.forward = -target.up;
+        while(true){
+            Vector3 lerpTo = new Vector3(transform.position.x,target.position.y,transform.position.z);
+            transform.position = Vector3.Lerp(transform.position,lerpTo-lerpOffset,count*Time.deltaTime);
+            Debug.Log(Vector3.Distance(transform.position, lerpTo - lerpOffset));
+            if(Vector3.Distance(transform.position,lerpTo-lerpOffset)<0.1f) yield break;
+            count+=0.01f;
+            yield return null;
         }
     }
 }

@@ -6,7 +6,9 @@ using Cinemachine;
 public class Chair : MonoBehaviour
 {
     [SerializeField] Transform placeToSit;
+    [SerializeField] Transform placeToStand;
     [SerializeField] CinemachineVirtualCamera cameraToSit;
+    [SerializeField] Material chair;
     bool playerIsNear = false;
     Control player = null;
     // Start is called before the first frame update
@@ -19,6 +21,20 @@ public class Chair : MonoBehaviour
     void Update()
     {
         
+    }
+
+
+
+    private void OnMouseOver() {
+        if (playerIsNear)
+        {
+            chair.EnableKeyword("_EMISSION");
+        }
+        else chair.DisableKeyword("_EMISSION");
+    }
+
+    private void OnMouseExit() {
+        chair.DisableKeyword("_EMISSION");
     }
 
     private void OnTriggerEnter(Collider other) {
@@ -34,6 +50,7 @@ public class Chair : MonoBehaviour
         {
             playerIsNear = false;
             player.NearToObject(this,false);
+            chair.DisableKeyword("_EMISSION");
         }
     }
 
@@ -43,6 +60,14 @@ public class Chair : MonoBehaviour
 
     public CinemachineVirtualCamera GetCamera(){
         return cameraToSit;
+    }
+
+    public void Emission(){
+        chair.DisableKeyword("_EMISSION");
+    }
+
+    public Vector3 PlaceToStandUP(){
+        return placeToStand.position;
     }
 
 }
