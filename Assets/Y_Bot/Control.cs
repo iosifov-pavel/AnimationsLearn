@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Cinemachine;
 
 public class Control : MonoBehaviour
 {
@@ -12,9 +13,17 @@ public class Control : MonoBehaviour
     bool sneakMode = false;
     bool isSitting = false;
     bool blockControl = false;
+    private bool canSit;
+    Chair chair = null;
+    CapsuleCollider colider;
+    Rigidbody body;
+    float count = 0.1f;
+
     void Start()
     {
         animator = GetComponent<Animator>();
+        colider = GetComponent<CapsuleCollider>();
+        body = GetComponent<Rigidbody>();
     }
 
     // Update is called once per frame
@@ -22,12 +31,15 @@ public class Control : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            if (BusyProceedMouseAction()) return;
+            if(canSit){
+                ProceedSitting();
+            }
             
         }
         if(blockControl){
-            if(Input.GetMouseButtonDown(1)){
-                blockControl = false;
+            if(Input.GetMouseButtonDown(1))
+            {
+                Standing();
             }
         }
         if(!blockControl){
@@ -35,6 +47,65 @@ public class Control : MonoBehaviour
             Sneaking();
             Walking();
         }
+    }
+
+    private void Standing()
+    {
+        StopAllCoroutines();
+        CinemachineVirtualCamera cameraToSit = chair.GetCamera();
+        cameraToSit.Priority = 1;
+        animator.SetBool("isSitting", false);
+        StartCoroutine(WaitForStand());
+    }
+
+    IEnumerator WaitForStand(){
+        yield return new WaitUntil(()=>animator.GetCurrentAnimatorStateInfo(0).IsName("neutral_idle"));
+        colider.enabled = true;
+        blockControl = false;
+        body.useGravity = true;
+    }
+
+    private void ProceedSitting()
+    {
+        animator.SetBool("isWalking", false);
+        blockControl = true;
+        CinemachineVirtualCamera cameraToSit = chair.GetCamera();
+        Transform placeToStand = chair.GetPosition();
+        cameraToSit.Priority = 3;
+        StartCoroutine(GoToPlace(placeToStand));
+
+    }
+
+    IEnumerator GoToPlace(Transform place)
+    {
+        Debug.Log("In");
+        colider.enabled = false;
+        body.useGravity = false;
+        yield return new WaitUntil(() => Check(place));
+        Debug.Log("Out");
+        animator.SetBool("isSitting", true);
+        yield break;
+    }
+
+    private bool Check(Transform place)
+    {
+        transform.position = Vector3.Lerp(transform.position, place.position, count*Time.deltaTime);
+        transform.forward = Vector3.Lerp(transform.forward, -place.forward, count* Time.deltaTime);
+        count+=0.01f;
+        bool posRady = Vector3.Distance(transform.position,place.position)<0.05f;
+        bool reoReady = Mathf.Abs(Vector3.Angle(transform.forward,-place.forward))<1;
+        return posRady && reoReady;
+    }
+
+    public void NearToObject(Chair chair, bool check)
+    {
+        this.chair = chair;
+        if(!check){
+            canSit = false;
+            return;
+        }
+        canSit = true;
+        Debug.Log("Can Sit");
     }
 
     private void Walking()
@@ -68,30 +139,5 @@ public class Control : MonoBehaviour
         {
             animator.ResetTrigger("isJumping");
         }
-    }
-
-    private bool BusyProceedMouseAction()
-    {
-        RaycastHit hit;
-        if(Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition),out hit,100f)){
-            if(hit.collider.gameObject.tag=="chair"){
-                transform.LookAt(hit.transform);
-                SitOnChair(hit.collider.ClosestPointOnBounds(transform.position));
-                blockControl = true;
-            }
-        }
-        return false;
-    }
-
-    private void SitOnChair(Vector3 chair)
-    {
-        Debug.Log(Vector3.Distance(transform.position,chair));
-        if(Vector3.Distance(transform.position,chair)>0.6f){
-            print("farAway");
-        }
-        else{
-            blockControl = true;
-            print("chair");
-        } 
     }
 }
