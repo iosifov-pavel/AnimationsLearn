@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.43981305, g: 0.4882517, b: 0.56846607, a: 1}
+  m_IndirectSpecularColor: {r: 0.4398123, g: 0.48825097, b: 0.5684648, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -176,7 +176,10 @@ MonoBehaviour:
   sneakMultiplier: 0.22
   rotationSpeed: 100
   jumpForce: 50
-  lerpOffset: {x: 0, y: 4.14, z: 0}
+  lerpOffset: {x: 0, y: 4.26, z: 0}
+  climbingSpeed: 3
+  isHanging: 0
+  jumpOff: 0
 --- !u!136 &115777949
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -561,13 +564,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 552734554}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0, y: -0.141, z: 0.617}
+  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: -0.07, z: 0.59}
   m_LocalScale: {x: 0.04, y: 0.4, z: 0.5}
   m_Children: []
   m_Father: {fileID: 1880392972}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!65 &552734556
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -576,8 +579,8 @@ BoxCollider:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 552734554}
   m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -588,7 +591,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 552734554}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -1480,6 +1483,10 @@ PrefabInstance:
     - target: {fileID: 9500000, guid: 140ccfe5256414998a742da35312c803, type: 3}
       propertyPath: m_CullingMode
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9500000, guid: 140ccfe5256414998a742da35312c803, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 140ccfe5256414998a742da35312c803, type: 3}

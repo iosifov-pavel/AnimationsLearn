@@ -20,8 +20,9 @@ public class Edge : MonoBehaviour
 
     private void OnTriggerEnter(Collider other) {
         if(other.gameObject.tag=="Hand"){
-            Debug.Log("Hand");
             player = other.gameObject.GetComponentInParent<Control>();
+            if(player.jumpOff || player.isHanging) return;
+            Debug.Log("Hand");
             player.setHanging(true, anchor);
         }
     }

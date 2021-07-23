@@ -11,46 +11,59 @@ public class Control : MonoBehaviour
     [SerializeField] float rotationSpeed = 100f;
     [SerializeField] float jumpForce = 5f;
     [SerializeField] Vector3 lerpOffset = Vector3.zero;
+    [SerializeField] float climbingSpeed = 3;
     Animator animator;
     bool sneakMode = false;
     bool isSitting = false;
-    bool blockControl = false;
+    bool blockAll = false;
+    bool blockMove = false;
+    bool blockJump = false;
+    bool blockRotation = false;
     private bool canSit;
     bool isJumping = false;
-    bool isHanging=false;
+    public bool isHanging=false;
+
+    public bool jumpOff=false;
     Chair chair = null;
     CapsuleCollider colider;
     Rigidbody body;
     float count = 0.05f;
 
-    void Start()
-    {
+    void Start(){
         animator = GetComponent<Animator>();
         colider = GetComponent<CapsuleCollider>();
         body = GetComponent<Rigidbody>();
     }
 
     // Update is called once per frame
-    void Update()
-    {
-        if (Input.GetMouseButtonDown(0))
-        {
+    void Update(){
+        if (Input.GetMouseButtonDown(0)){
             if(canSit){
                 ProceedSitting();
             }
-            
         }
-        if(blockControl){
-            if(Input.GetMouseButtonDown(1))
-            {
+        if(blockAll){
+            if(Input.GetMouseButtonDown(1)){
                 Standing();
             }
         }
-        if(!blockControl){
-            Jumping();
+        if(!blockAll){
+            if(isHanging) Hanging();
+            if(!blockJump)Jumping();
             Sneaking();
-            Walking();
+            if(!blockMove)Walking();
         }
+    }
+
+    private void Hanging()
+    {
+        float move = Input.GetAxis("Horizontal");
+        if(move==0){
+            animator.SetBool("isShiming", false);
+            return;
+        }
+        animator.SetBool("isShiming", true);
+        animator.SetFloat("shimingDirection", move>0? 1 : -1);
     }
 
     private void Standing()
@@ -71,14 +84,15 @@ public class Control : MonoBehaviour
             return animator.GetCurrentAnimatorStateInfo(0).IsName("neutral_idle");
         });
         colider.enabled = true;
-        blockControl = false;
+        blockAll = false;
         body.useGravity = true;
+        isHanging = false;
     }
 
     private void ProceedSitting()
     {
         animator.SetBool("isWalking", false);
-        blockControl = true;
+        blockAll = true;
         CinemachineVirtualCamera cameraToSit = chair.GetCamera();
         Transform placeToStand = chair.GetPosition();
         cameraToSit.Priority = 3;
@@ -127,7 +141,7 @@ public class Control : MonoBehaviour
         if (sneakMode) move *= sneakMultiplier;
         float rotation = Input.GetAxis("Horizontal") * rotationSpeed * Time.deltaTime;
         transform.Translate(0, 0, move);
-        transform.Rotate(0, rotation, 0);
+        if(!blockRotation)transform.Rotate(0, rotation, 0);
         if (move != 0) animator.SetBool("isWalking", true);
         else animator.SetBool("isWalking", false);
         animator.SetFloat("direction", move > 0 ? 1 : -1);
@@ -144,6 +158,15 @@ public class Control : MonoBehaviour
 
     private void Jumping()
     {
+        if(isHanging && Input.GetKeyDown(KeyCode.W)){
+            animator.SetTrigger("climbing");
+            StartCoroutine(ClimbUp("StandUpFromCrouch"));
+        }
+        else if(isHanging && Input.GetKeyDown(KeyCode.S)){
+            animator.SetTrigger("jumpOff");
+            jumpOff = true;
+            StartCoroutine(ClimbUp("jumpdown"));
+        }
         if (Input.GetKeyDown(KeyCode.Space) && !isJumping)
         {
             //body.AddForce(Vector3.up*jumpForce,ForceMode.Impulse);
@@ -157,22 +180,59 @@ public class Control : MonoBehaviour
         }
     }
 
-    public void setHanging(bool state, Transform target){
-        isHanging = state;
-        body.isKinematic = isHanging;
-        count = 0.05f;
-        StartCoroutine(LerpTo(target));
+    IEnumerator ClimbUp(string name){
+        yield return new WaitUntil(()=>
+            animator.GetCurrentAnimatorStateInfo(0).IsName(name)
+        );
+        animator.ResetTrigger("climbing");
+        animator.ResetTrigger("jumpOff");
+        isHanging = false;
         animator.SetBool("isHanging",isHanging);
+        blockMove = false;
+        blockRotation = false;
+        body.isKinematic = false;
+        yield return new WaitUntil(()=>
+            animator.GetCurrentAnimatorStateInfo(0).IsName("neutral_idle")
+        );
+        jumpOff = false;
+        yield break;
     }
 
-    IEnumerator LerpTo(Transform target){
-        transform.forward = -target.up;
+    public void setHanging(bool state, Transform target){
+        blockRotation = state;
+        blockMove = state;
+        body.isKinematic = state;
+        animator.SetBool("isHanging",state);
+        if(state){
+            count = 0f;
+            StartCoroutine(LerpTo(CalculateOffset(target)));
+        }
+    }
+
+    Vector3 CalculateOffset(Transform target){
+        transform.forward = target.forward;
+        Vector3 player = transform.position;
+        player.y = target.position.y;
+        Vector3 targetPos = target.position;
+        Vector3 fromTargetToPlayer = player - targetPos;
+        float amount = fromTargetToPlayer.magnitude;
+        fromTargetToPlayer.Normalize();
+        float angle = Vector3.Angle(target.right,fromTargetToPlayer);
+        float sinAngle = Mathf.Sin(angle * Mathf.Deg2Rad);
+        float magnB = amount * sinAngle;
+        player += transform.forward*magnB;
+        return player;
+    }
+
+    IEnumerator LerpTo(Vector3 target){
         while(true){
-            Vector3 lerpTo = new Vector3(transform.position.x,target.position.y,transform.position.z);
-            transform.position = Vector3.Lerp(transform.position,lerpTo-lerpOffset,count*Time.deltaTime);
-            Debug.Log(Vector3.Distance(transform.position, lerpTo - lerpOffset));
-            if(Vector3.Distance(transform.position,lerpTo-lerpOffset)<0.1f) yield break;
-            count+=0.01f;
+            transform.position = Vector3.Lerp(transform.position,target-lerpOffset,count*Time.deltaTime);
+            count+=0.16f;
+            if(Vector3.Distance(transform.position,target-lerpOffset)<0.02f){
+                Debug.Log("Done");
+                isHanging = true;
+                yield break;
+            } 
             yield return null;
         }
     }
